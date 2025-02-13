@@ -15,8 +15,8 @@ def content_planner(research_data: Dict) -> Dict:
             raise ValidationError("Invalid research data format")
             
         # Extract first trend from each category
-        niche_trend = research_data["niche_trends"].splitlines()[0]
-        content_trend = research_data["content_trends"].splitlines()[0]
+        niche_trend = research_data["niche_trends"][0]  
+        content_trend = research_data["content_trends"][0]  
         
         return {
             "content_plan": [

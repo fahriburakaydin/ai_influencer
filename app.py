@@ -7,6 +7,7 @@ from database import init_db, save_post
 from exceptions import AppError
 from logger import logger
 from config import Config
+from instagram_poster import InstagramPoster
 
 logger.info("Application started successfully")
 
@@ -32,6 +33,8 @@ def create_post():
         logger.debug(f"Content Plan: {plan}")
 
         posts = []
+        poster = InstagramPoster()
+
         for idea in plan["content_plan"]:
             image_url = generate_image(idea)
             caption = generate_caption(idea)
@@ -43,6 +46,11 @@ def create_post():
                 "caption": caption,
                 "idea": idea
             })
+            if poster.post_to_instagram(image_url, caption):
+                logger.info("Posted to Instagram successfully!")
+            else:
+             logger.warning("Failed to post to Instagram")
+
         
         return render_template('results.html', posts=posts)
         

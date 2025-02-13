@@ -9,3 +9,5 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
     MODEL=os.getenv("MODEL")
+    INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID")
+    INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")

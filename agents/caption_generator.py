@@ -4,6 +4,7 @@ from config import Config
 from exceptions import APIError
 from testing import mock_text_generation, should_mock
 from logger import logger
+import random
 
 def generate_caption(post_idea: str) -> str:
     """
@@ -19,24 +20,30 @@ def generate_caption(post_idea: str) -> str:
         client = OpenAI(api_key=Config.OPENAI_API_KEY)
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=Config.MODEL,
             messages=[{
                 "role": "user",
                 "content": f"""
-                Create an engaging Instagram caption about: {post_idea}
+                Create an Instagram caption about: {post_idea}
+                
                 Requirements:
-                - Include 3-5 relevant hashtags at the end
-                - Use emojis where appropriate
-                - Keep it under 220 characters
-                - Use a friendly, motivational tone
+                - First line: Attention-grabbing hook (include 1 relevant emoji)
+                - Second line: Value proposition or interesting fact
+                - Third line: Call-to-action or question
+                - Hashtags: 3-5 niche-specific hashtags at end
+                - Tone: {random.choice(["Funny", "Inspirational", "Curious"])}
+                - MAKE SURE THE CAPTION IS LESS THAN 250 CHARACTERS!!
+                - Avoid: Generic phrases like "check this out"
                 """
             }]
         )
         
         caption = response.choices[0].message.content.strip()
+        print(f"generated caption: {caption}")
         
         # Basic validation
-        if not caption or len(caption) > 300:
+        if not caption or len(caption) > 350:
+            print(f"Caption is {len(caption)} characters")
             raise APIError("Caption generation failed validation")
             
         return caption
