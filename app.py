@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from agents.research_agent import research_agent
 from agents.content_planner import content_planner
 from agents.image_generator import generate_image
@@ -7,12 +7,19 @@ from database import init_db, save_post
 from exceptions import AppError
 from logger import logger
 from config import Config
-from instagram_poster import InstagramPoster
+from instagram_poster import InstagramPoster, InstagrApiPoster
+
 
 logger.info("Application started successfully")
 
 app = Flask(__name__)
 init_db()
+
+# Store challenge context in session
+@app.route('/verify-2fa', methods=['POST'])
+def verify_2fa():
+    session['2fa_code'] = request.form['2fa_code']
+    return redirect(url_for('create_post'))
 
 @app.route('/')
 def home():
@@ -33,7 +40,9 @@ def create_post():
         logger.debug(f"Content Plan: {plan}")
 
         posts = []
-        poster = InstagramPoster()
+        poster = InstagrApiPoster() # or InstagramPoster() if you want to use the official API
+        if not poster.login():
+            return "Instagram login failed", 500
 
         for idea in plan["content_plan"]:
             image_url = generate_image(idea)
@@ -46,7 +55,7 @@ def create_post():
                 "caption": caption,
                 "idea": idea
             })
-            if poster.post_to_instagram(image_url, caption):
+            if poster.post_content(image_url, caption):
                 logger.info("Posted to Instagram successfully!")
             else:
              logger.warning("Failed to post to Instagram")
