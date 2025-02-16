@@ -1,0 +1,8 @@
+@media (min-width: 1200px) {
+    .post-image {
+        max-width: 500px;
+    }
+    .post-card {
+        max-width: 700px;
+    }
+}
