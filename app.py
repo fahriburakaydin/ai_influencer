@@ -12,6 +12,8 @@ from instagrapi.exceptions import ChallengeRequired
 import os
 import time
 from datetime import datetime
+from agents.orchestrator import Orchestrator  
+
 
 logger.info("Application started successfully")
 
@@ -33,6 +35,8 @@ def create_post():
             
         poster = InstagrApiPoster()
         code = session.pop('2fa_code', None)
+
+        orchestrator = Orchestrator()
         
         try:
             login_success = poster.login(code=code)
@@ -46,41 +50,46 @@ def create_post():
         # Start processing
         start_time = datetime.now()
         logger.info(f"Started processing niche: {niche}")
-        
-        research = research_agent(niche)
-        plan = content_planner(research)
+       
+        # Get full workflow result
+        workflow_result  = orchestrator.create_workflow(niche)
         
         posts = []
         failed_posts = []
         
-        for idea in plan["content_plan"]:
+        for post in workflow_result.get("posts", []):
+            idea = post.get("idea")
+            image_url = post.get("image")
+            caption = post.get("caption")
             try:
-                image_url = generate_image(idea)
-                caption = generate_caption(idea)
                 save_post(niche, idea, image_url, caption)
-                
-                # Add a small delay between posts
-                if poster.post_content(image_url, caption):
+                if Config.INSTAGRAM_TEST:
+                    logger.info("INSTAGRAM_TEST enabled, skipping Instagram posting.")
                     posts.append({"image": image_url, "caption": caption})
+
                 else:
-                    failed_posts.append({"image": image_url, "caption": caption})
-                    logger.warning(f"Failed to post: {idea}")
-                
+                    if poster.post_content(image_url, caption):
+                        posts.append({"image": image_url, "caption": caption})
+                    else:
+                        failed_posts.append({"image": image_url, "caption": caption})
+                        logger.warning(f"Failed to post: {idea}")
+                        
             except Exception as e:
-                logger.error(f"Error processing idea: {str(e)}")
+                logger.error(f"Error processing post: {str(e)}")
                 failed_posts.append({"error": str(e)})
         
         return render_template('results.html', 
-                            posts=posts, 
-                            failed_posts=failed_posts,
-                            time_taken=str(datetime.now() - start_time))
-        
+                               posts=posts, 
+                               failed_posts=failed_posts,
+                               time_taken=str(datetime.now() - start_time))
+    
     except ChallengeRequired:
         logger.info("2FA required - redirecting")
         return redirect(url_for('show_2fa_form'))
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        return render_template('error.html', message=str(e)), 500
+        logger.error(f"Workflow failed: {str(e)}", exc_info=True)
+        return render_template('error.html', 
+                            message="Failed to coordinate agents. Details in logs."), 500
 
 @app.route('/2fa', methods=['GET', 'POST'])
 def show_2fa_form():

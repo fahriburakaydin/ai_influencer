@@ -4,3 +4,7 @@ requests
 replicate
 openai
 sqlite3
+langchain-core
+langchain-community
+langchain-openai
+pydantic

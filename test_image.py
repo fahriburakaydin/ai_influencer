@@ -42,7 +42,7 @@ class InstagramTester:
         try:
             if os.path.exists(self.session_file):
                 self.client.load_settings(self.session_file)
-                if self.client.get_user_id():
+                if self.client.user_id:
                     logger.info("Reused existing session")
                     return True
                     

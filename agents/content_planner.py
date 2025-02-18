@@ -1,28 +1,34 @@
+# agents/content_planner.py
 from typing import Dict
 from config import Config
 from exceptions import ValidationError
 from logger import logger
+from pydantic import ValidationError
 
 def content_planner(research_data: Dict) -> Dict:
     logger.info("Starting content planning")
     
     try:
-        # Validate input
         if not research_data:
             raise ValidationError("Empty research data")
-            
-        if not all(key in research_data for key in ["niche_trends", "content_trends"]):
-            raise ValidationError("Invalid research data format")
-            
-        # Extract first trend from each category
-        niche_trend = research_data["niche_trends"][0]  
-        content_trend = research_data["content_trends"][0]  
+        
+        if not isinstance(research_data, dict):
+            raise ValidationError("Research data must be a dictionary")      
+
+ 
+        required_keys = {"niche_trends", "content_trends"}
+        if not required_keys.issubset(research_data.keys()):
+            missing = required_keys - research_data.keys()
+            raise ValidationError(f"Missing research keys: {missing}")
+
+        # Combine trends and strategies
+        combined_ideas = []
+        for niche_trend in research_data["niche_trends"]:
+            for content_trend in research_data["content_trends"]:
+                combined_ideas.append(f"{niche_trend} using {content_trend}")
         
         return {
-            "content_plan": [
-                f"Post about {niche_trend}",
-                f"Post using {content_trend}"
-            ]
+            "content_plan": combined_ideas[:3]  # Return top 3 combinations
         }
         
     except Exception as e:
