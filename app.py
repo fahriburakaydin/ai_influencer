@@ -12,7 +12,7 @@ from instagrapi.exceptions import ChallengeRequired
 import os
 import time
 from datetime import datetime
-from agents.orchestrator import Orchestrator  
+from agents.orchestrator2 import Orchestrator  
 
 
 logger.info("Application started successfully")
@@ -52,7 +52,7 @@ def create_post():
         logger.info(f"Started processing niche: {niche}")
        
         # Get full workflow result
-        workflow_result  = orchestrator.create_workflow(niche)
+        workflow_result  = orchestrator.run_workflow(niche)
         
         posts = []
         failed_posts = []
