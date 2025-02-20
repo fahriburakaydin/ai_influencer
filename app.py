@@ -1,9 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-""" from agents.research_agent_crew import research_agent
-from agents.content_planner import content_planner
-from agents.image_generator import generate_image
-from agents.caption_generator import generate_caption """
-from database import init_db, save_post
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify , send_from_directory
+
+from database import init_db, save_post, save_store, get_store, get_store_images, save_store_image
 from exceptions import AppError
 from logger import logger
 from config import Config
@@ -13,18 +10,72 @@ import os
 import time
 from datetime import datetime
 from agents.orchestrator2 import Orchestrator  
+from werkzeug.utils import secure_filename
 
 
 logger.info("Application started successfully")
 
+UPLOAD_FOLDER = 'static/uploads' # Directory to store images
+
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Ensure upload folder exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+
+# Initialize the database
 init_db()
 
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/store-profile', methods=['GET', 'POST'])
+def store_profile():
+    """
+    Handles store profile creation and updates.
+    """
+    if request.method == 'POST':
+        store_name = request.form.get('store_name')
+        address = request.form.get('address')
+        brand_voice = request.form.get('brand_voice')
+        fun_facts = request.form.get('fun_facts')
+        signature_products = request.form.get('signature_products')
+
+        save_store(store_name, address, brand_voice, fun_facts, signature_products)
+
+        return redirect(url_for('store_profile'))
+
+    # Load existing store data and images
+    store = get_store()
+    store_images = get_store_images()
+    return render_template('store_profile.html', store=store, store_images=store_images)
+
+@app.route('/upload-image', methods=['POST'])
+def upload_image():
+    """
+    Handles image uploads for store profile.
+    """
+    file = request.files['file']
+    if file:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file_path = file_path.replace("\\", "/") # Convert Windows-style backslashes to forward slashes
+        file.save(file_path)
+
+        store = get_store()
+        if store:
+            save_store_image(store[0], file_path)
+
+    return redirect(url_for('store_profile'))
+
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/create', methods=['POST'])
 def create_post():

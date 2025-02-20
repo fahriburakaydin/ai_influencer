@@ -8,6 +8,8 @@ from logger import logger
 from pydantic import BaseModel, Field, ValidationError
 from typing import Union, Any, Dict, Optional, List
 
+
+
 # Define a Pydantic model for the Web Search input
 class WebSearchInput(BaseModel):
     query: Union[str, Dict[str, Any]] = Field(
@@ -59,9 +61,9 @@ def research_agent(niche: str) -> dict:
         search_tool = WebSearchTool().tools
 
         researcher = Agent(
-            role="Senior Social Media Analyst",
-            goal=f"Find viral trends in {niche}",
-            backstory="Expert in spotting emerging trends",
+            role="Social media eexpert",
+            goal=f"Find and provide the 5-7 most relevant {niche} trends observed in the last 60 days from social media and general web coverage.",
+            backstory="You are a leading expert in {niche} social media trends, with 10+ years of data-driven research experience.",
             tools=[search_tool],
             verbose=True,
             allow_delegation=False,
@@ -71,31 +73,63 @@ def research_agent(niche: str) -> dict:
         analyst = Agent(
             role="Content Strategy Expert",
             goal="Convert trends into actionable strategies",
-            backstory="Former social media manager for top influencers",
+            backstory=" You are an Instagram Content Strategist with a focus on short, visually engaging campaigns.",
             verbose=True,
             allow_delegation=False,
             max_iter=2  # Limit to 2 reasoning steps
         )
 
         research_task = Task(
-            description=f"""Use the 'Web Search' tool to find current {niche} trends on social media platforms.
-Focus your search on recent discussions (last 3 months) related to '{niche} trends on social media'.
-Return 5-7 raw trending topics in bullet points.""",
+            description=f"""(ROLE) You are a leading expert in {niche} social media trends, with 
+    10+ years of data-driven research experience.
+
+    (AUDIENCE) Your audience is busy entrepreneurs who want quick, 
+    scannable insights on the newest {niche} trends.
+
+    (GOAL) Provide the 5-7 most relevant {niche} trends observed in the last 60 days 
+    from social media and general web coverage.
+
+    (FORMAT) 
+    - Output exactly 5-7 bullet points (no more).
+    - Each bullet: <Trend Name>: <Brief explanation> (one sentence).
+    - End the list after the 7th bullet if you have 7.
+    - No disclaimers, no extra commentary, no steps about how you found the data.
+
+    (EXAMPLE)
+    - Sourdough Revival: Sourdough baking experiences a resurgence as people seek artisanal methods.
+    - TikTok Home Workouts: Quick, 15-second bodyweight routines go viral among time-strapped users.
+    ...
+    """,
             agent=researcher,
             expected_output="Bullet point list of trends:\n- Trend 1\n- Trend 2"
         )
         
         analysis_task = Task(
-            description=f"""Convert these trends into content strategies for Instagram.
-Use this format:
-            
-Niche Trends:
-1. [Formatted trend 1]
-2. [Formatted trend 2]
-            
-Content Strategies:
-1. [Actionable strategy 1]
-2. [Actionable strategy 2]""",
+            description=f"""(ROLE) You are an Instagram Content Strategist with a focus on 
+        short, visually engaging campaigns.
+
+        (INSTRUCTIONS) 
+        1. Convert each bullet from the previous step into a short, Instagram-friendly 'trend name.'
+        2. For each trend, propose 1 short-form strategy (under 140 chars) and 1 slightly longer idea (2-3 sentences).
+        3. Output valid JSON only, with keys "niche_trends" and "content_strategies".
+
+        Example Format:
+        {{
+          "niche_trends": [
+             "1. TrendName1",
+             "2. TrendName2"
+          ],
+          "content_strategies": [
+             "1. StrategyOne",
+             "2. StrategyTwo"
+          ]
+        }}
+
+        (REMINDER)
+        - No text outside the JSON brace.
+        - Provide up to 7 trends and up to 7 strategies (matching each trend).
+        - Keep it concise and brand-safe (no profanity, no questionable references).
+   """,
             agent=analyst,
             # Expected output is strict JSON.
             expected_output=('{"niche_trends": ["1. Trend_1", "2. Trend_2"], '

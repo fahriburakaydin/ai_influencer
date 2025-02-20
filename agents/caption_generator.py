@@ -24,6 +24,7 @@ def generate_caption(post_idea: str) -> str:
             messages=[{
                 "role": "user",
                 "content": f"""
+                You are a witty but professional Instagram copywriter specializing in short, snappy captions for a Gen Z audience.
                 Create an Instagram caption about: {post_idea}
                 
                 Requirements:
@@ -34,6 +35,7 @@ def generate_caption(post_idea: str) -> str:
                 - Tone: {random.choice(["Funny", "Inspirational", "Curious"])}
                 - MAKE SURE THE CAPTION IS LESS THAN 250 CHARACTERS!!
                 - Avoid: Generic phrases like "check this out"
+                - Use an inclusive tone (avoid 'guys', prefer 'everyone' or 'friends').
                 """
             }]
         )

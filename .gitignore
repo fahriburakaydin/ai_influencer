@@ -22,3 +22,9 @@ my_env/
 dist/
 build/
 *.egg-info/
+posts.db
+static/uploads/
+.cahche
+.bak
+.index
+.db
