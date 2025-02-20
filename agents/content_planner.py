@@ -28,7 +28,7 @@ def content_planner(research_data: Dict) -> Dict:
                 combined_ideas.append(f"{niche_trend} using {content_trend}")
         
         return {
-            "content_plan": combined_ideas[:1]  # Return top combination
+            "content_plan": combined_ideas[:Config.NUM_ALTERNATIVES]  # Return top N combination 
         }
         
     except Exception as e:

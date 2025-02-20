@@ -21,3 +21,4 @@ class Config:
 
 
     DISTANCE_THRESHOLD=0.5
+    NUM_ALTERNATIVES=2

@@ -82,14 +82,22 @@ class Orchestrator:
         while attempts < self.max_retries:
             try:
                 logger.info(f"Calling {agent_name} (attempt {attempts+1}) with input: {input_data}")
-                result = function(input_data)  # Call the agent function with the provided input.
+                result = function(input_data)
                 logger.info(f"{agent_name} succeeded with result: {result}")
-                return result  # Return result if successful.
+                return result
+            except APIError as ae:
+                logger.error(f"{agent_name} failed with APIError: {ae}")
+                # Potentially handle differently or parse the error message
+            except ValidationError as ve:
+                logger.error(f"{agent_name} failed with ValidationError: {ve}")
+                # Might skip retry if input is invalid
+                break
             except Exception as e:
-                attempts += 1
-                logger.error(f"{agent_name} failed on attempt {attempts} with error: {e}")
-                time.sleep(self.retry_delay)  # Wait before trying again.
-        # If all attempts fail, raise an exception.
+                logger.error(f"{agent_name} failed with an unexpected error: {e}")
+                
+            attempts += 1
+            time.sleep(self.retry_delay)
+
         raise Exception(f"{agent_name} failed after {self.max_retries} attempts")
 
     def _check_similarity_with_memory(self, new_idea):
