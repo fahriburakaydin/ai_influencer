@@ -7,4 +7,8 @@ sqlite3
 langchain-core
 langchain-community
 langchain-openai
-pydantic
+pydantic==2.10.1 #compatible with instagrapi
+faiss-cpu
+langchain-community 
+duckduckgo-search 
+crewai

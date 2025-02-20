@@ -15,8 +15,8 @@ def content_planner(research_data: Dict) -> Dict:
         if not isinstance(research_data, dict):
             raise ValidationError("Research data must be a dictionary")      
 
- 
-        required_keys = {"niche_trends", "content_trends"}
+        # Updated required keys to match the new research agent output.
+        required_keys = {"niche_trends", "content_strategies"}
         if not required_keys.issubset(research_data.keys()):
             missing = required_keys - research_data.keys()
             raise ValidationError(f"Missing research keys: {missing}")
@@ -24,11 +24,11 @@ def content_planner(research_data: Dict) -> Dict:
         # Combine trends and strategies
         combined_ideas = []
         for niche_trend in research_data["niche_trends"]:
-            for content_trend in research_data["content_trends"]:
+            for content_trend in research_data["content_strategies"]:
                 combined_ideas.append(f"{niche_trend} using {content_trend}")
         
         return {
-            "content_plan": combined_ideas[:1]  # Return top 3 combinations
+            "content_plan": combined_ideas[:1]  # Return top combination
         }
         
     except Exception as e:

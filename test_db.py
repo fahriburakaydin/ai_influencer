@@ -1,10 +1,20 @@
-from database import init_db, save_post
+import sqlite3
 
-def test_database():
-    init_db()
-    save_post("test", "test idea", "test.jpg", "test caption")
-    print("Database test successful!")
+# Connect to the SQLite database
+conn = sqlite3.connect('posts.db')  # Ensure the path is correct
 
-if __name__ == "__main__":
-    test_database()
-    print()
+# Create a cursor object to interact with the database
+cursor = conn.cursor()
+
+# Query to fetch the post ID and caption
+cursor.execute("SELECT id, caption FROM posts")
+
+# Fetch all rows from the query
+posts = cursor.fetchall()
+
+# Print the results
+for post in posts:
+    print(f"Post ID: {post[0]}, Caption: {post[1]}")
+
+# Close the connection
+conn.close()

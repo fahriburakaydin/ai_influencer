@@ -17,3 +17,7 @@ class Config:
     INSTAGRAM_PASSWORD=os.getenv("INSTAGRAM_USERNAME")
 
     INSTAGRAM_SESSION_FILE = os.getenv("INSTAGRAM_SESSION_FILE", "instagram_session.json")
+
+
+
+    DISTANCE_THRESHOLD=0.5

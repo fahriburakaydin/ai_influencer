@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from agents.research_agent import research_agent
+""" from agents.research_agent_crew import research_agent
 from agents.content_planner import content_planner
 from agents.image_generator import generate_image
-from agents.caption_generator import generate_caption
+from agents.caption_generator import generate_caption """
 from database import init_db, save_post
 from exceptions import AppError
 from logger import logger
@@ -29,7 +29,7 @@ def home():
 @app.route('/create', methods=['POST'])
 def create_post():
     try:
-        niche = request.form.get('niche', '').strip()
+        niche = request.form.get('niche', '').strip().replace(' ', '_')
         if not niche:
             return redirect(url_for('home'))
             

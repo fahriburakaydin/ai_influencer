@@ -13,7 +13,7 @@ import json
 class ContentPlannerInput(BaseModel):
     research_data: dict = Field(
         ...,
-        description="Full research data from ResearchAgent containing niche_trends and content_trends"
+        description="Full research data from ResearchAgent containing niche_trends and content_strategies"
     )
 
 
