@@ -3,6 +3,7 @@ from datetime import datetime
 from config import Config
 from exceptions import DatabaseError
 from logger import logger
+import os
 
 def init_db():
     try:
@@ -30,14 +31,13 @@ def init_db():
         ''')
         
         # Create table for uploaded images
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS store_images (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                store_id INTEGER,
-                image_path TEXT NOT NULL,
-                FOREIGN KEY (store_id) REFERENCES stores(id)
-            )
-        ''') 
+        c.execute('''CREATE TABLE IF NOT EXISTS store_images (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        store_id INTEGER NOT NULL,
+                        image_path TEXT NOT NULL,
+                        description TEXT DEFAULT '',  -- New column for image descriptions
+                        FOREIGN KEY(store_id) REFERENCES stores(id)
+                    )''')
         
         conn.commit()
 
@@ -118,20 +118,22 @@ def save_store(store_name: str, address: str, brand_voice: str, fun_facts: str, 
         if conn:
             conn.close()
 
-def save_store_image(store_id: int, image_path: str):
-    """ Saves store images """
+def save_store_image(store_id, image_path, description=""):
+    """
+    Saves an uploaded image with an optional description.
+    """
     try:
         conn = sqlite3.connect('posts.db')
         c = conn.cursor()
-
-        c.execute("INSERT INTO store_images (store_id, image_path) VALUES (?, ?)", (store_id, image_path))
+        
+        c.execute('''INSERT INTO store_images (store_id, image_path, description) 
+                     VALUES (?, ?, ?)''', (store_id, image_path, description))
         
         conn.commit()
-        logger.info("Store image saved successfully")
+        logger.info(f"Saved image to DB: {image_path} with description: {description}")
 
     except sqlite3.Error as e:
-        logger.error(f"Failed to save store image: {str(e)}")
-        raise DatabaseError("Failed to save store image") from e
+        logger.error(f"Failed to save image: {str(e)}")
     finally:
         if conn:
             conn.close()
@@ -142,15 +144,78 @@ def get_store():
     c = conn.cursor()
     c.execute("SELECT * FROM stores LIMIT 1")
     store = c.fetchone()
+    logger.info(f"Fetched store details: {store}")
     conn.close()
     return store
 
 def get_store_images():
-    """ Retrieve uploaded store images """
-    conn = sqlite3.connect('posts.db')
-    c = conn.cursor()
-    c.execute("SELECT * FROM store_images")
-    images = c.fetchall()
-    conn.close()
-    logger.info(f"Fetched store images: {images}")  # for debugging
-    return images
+    """
+    Retrieves store images along with their descriptions.
+    """
+    try:
+        conn = sqlite3.connect('posts.db')
+        c = conn.cursor()
+        c.execute('''SELECT id, store_id, image_path, description FROM store_images''')
+        images = c.fetchall()
+        logger.info(f"Fetched store images: {images}")  #  Log images in the correct function
+        return [{"id": img[0], "store_id": img[1], "image_path": img[2], "description": img[3]} for img in images]
+
+    except sqlite3.Error as e:
+        logger.error(f"Failed to fetch store images: {str(e)}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def delete_store_image(image_id):
+    try:
+        conn = sqlite3.connect('posts.db')
+        c = conn.cursor()
+        # Retrieve the file path before deleting the record
+        c.execute('SELECT image_path FROM store_images WHERE id=?', (image_id,))
+        row = c.fetchone()
+        if row:
+            image_path = row[0]
+            # Delete the record from the database
+            c.execute('DELETE FROM store_images WHERE id=?', (image_id,))
+            conn.commit()
+            logger.info(f"Deleted image record: {image_path}")
+            # Optionally, delete the file from the filesystem
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting image: {str(e)}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+def get_image_by_id(image_id):
+    try:
+        conn = sqlite3.connect('posts.db')
+        c = conn.cursor()
+        c.execute('SELECT id, store_id, image_path, description FROM store_images WHERE id=?', (image_id,))
+        row = c.fetchone()
+        if row:
+            return {"id": row[0], "store_id": row[1], "image_path": row[2], "description": row[3]}
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching image: {str(e)}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def update_store_image(image_id, new_description):
+    try:
+        conn = sqlite3.connect('posts.db')
+        c = conn.cursor()
+        c.execute('UPDATE store_images SET description=? WHERE id=?', (new_description, image_id))
+        conn.commit()
+        logger.info(f"Updated image {image_id} description")
+    except Exception as e:
+        logger.error(f"Error updating image description: {str(e)}")
+    finally:
+        if conn:
+            conn.close()

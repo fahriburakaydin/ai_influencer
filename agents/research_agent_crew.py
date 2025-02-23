@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import Union, Any, Dict, Optional, List
 
 
-
 # Define a Pydantic model for the Web Search input
 class WebSearchInput(BaseModel):
     query: Union[str, Dict[str, Any]] = Field(
@@ -50,9 +49,16 @@ class WebSearchTool:
             args_schema=WebSearchInput
         )
 
-def research_agent(niche: str) -> dict:
+def research_agent(niche: str, store_details: dict = None) -> dict:
+    """
+    Conduct research on trending topics for a given niche, integrating store-specific details.
+
+    :param niche: The niche for which trends are being researched.
+    :param store_details: Optional store-specific information such as name, brand voice, and location.
+    :return: A dictionary containing niche trends and suggested content strategies.
+    """
     logger.info(f"Starting research agent for: {niche}")
-    
+
     if should_mock():
         logger.debug("Using mock research data")
         return mock_research(niche)
@@ -60,39 +66,58 @@ def research_agent(niche: str) -> dict:
     try:
         search_tool = WebSearchTool().tools
 
+        # ✅ Extract store-specific details (fallback to defaults if missing)
+        store_name = store_details.get("store_name", "a business") if store_details else "a business"
+        brand_voice = store_details.get("brand_voice", "neutral") if store_details else "neutral"
+        address = store_details.get("address", "") if store_details else ""
+        fun_facts = store_details.get("fun_facts", "") if store_details else ""
+        signature_products = store_details.get("signature_products", "") if store_details else ""
+        store_images = store_details.get("store_images", []) if store_details else []
+        image_descriptions = "\n".join([f"- {img['description']}" for img in store_images if img.get("description")])
+
+        # ✅ Modify AI Agents to use store data
         researcher = Agent(
-            role="Social media eexpert",
-            goal=f"Find and provide the 5-7 most relevant {niche} trends observed in the last 60 days from social media and general web coverage.",
-            backstory="You are a leading expert in {niche} social media trends, with 10+ years of data-driven research experience.",
+            role="Social media expert",
+            goal=f"Find and provide the 5-7 most relevant {niche} trends observed in the last 60 days, tailored to {store_name}.",
+            backstory=f"You are a leading expert in {niche} social media trends, with 10+ years of data-driven research experience, now specializing in strategies for {store_name}.",
             tools=[search_tool],
             verbose=True,
             allow_delegation=False,
-            max_iter=3  # Limit to 3 reasoning steps
+            max_iter=3
         )
 
         analyst = Agent(
             role="Content Strategy Expert",
-            goal="Convert trends into actionable strategies",
-            backstory=" You are an Instagram Content Strategist with a focus on short, visually engaging campaigns.",
+            goal=f"Convert trends into actionable strategies for {store_name}, aligned with their brand voice: {brand_voice}.",
+            backstory="You are an Instagram Content Strategist with a focus on short, visually engaging campaigns, helping brands like {store_name} stand out.",
             verbose=True,
             allow_delegation=False,
-            max_iter=2  # Limit to 2 reasoning steps
+            max_iter=2
         )
 
         research_task = Task(
-            description=f"""(ROLE) You are a leading expert in {niche} social media trends, with 
-    10+ years of data-driven research experience.
+            description=f"""(ROLE) You are a leading expert in {niche} social media trends, 
+    with 10+ years of data-driven research experience, currently assisting {store_name}.
 
     (AUDIENCE) Your audience is busy entrepreneurs who want quick, 
-    scannable insights on the newest {niche} trends.
+    scannable insights on the newest {niche} trends, specifically applicable to {store_name}.
+
+    (STORE DETAILS)
+    - Address: {address}
+    - Fun Facts: {fun_facts}
+    - Signature Products: {signature_products}
+
+    **Reference these store-specific elements when generating content.**
+    
+    If relevant, use these image descriptions:
+    {image_descriptions}
 
     (GOAL) Provide the 5-7 most relevant {niche} trends observed in the last 60 days 
-    from social media and general web coverage.
+    from social media and general web coverage that are most relevant for {store_name}.
 
-    (FORMAT) 
+    (FORMAT)
     - Output exactly 5-7 bullet points (no more).
     - Each bullet: <Trend Name>: <Brief explanation> (one sentence).
-    - End the list after the 7th bullet if you have 7.
     - No disclaimers, no extra commentary, no steps about how you found the data.
 
     (EXAMPLE)
@@ -105,14 +130,19 @@ def research_agent(niche: str) -> dict:
         )
         
         analysis_task = Task(
-            description=f"""(ROLE) You are an Instagram Content Strategist with a focus on 
-        short, visually engaging campaigns.
+            description=f"""(ROLE) You are an Instagram Content Strategist specializing in short, 
+        visually engaging campaigns, helping brands like {store_name} succeed.
 
-        (INSTRUCTIONS) 
+        (INSTRUCTIONS)
         1. Convert each bullet from the previous step into a short, Instagram-friendly 'trend name.'
         2. For each trend, propose 1 short-form strategy (under 140 chars) and 1 slightly longer idea (2-3 sentences).
         3. Output valid JSON only, with keys "niche_trends" and "content_strategies".
 
+        (STORE DETAILS)
+        - Brand Voice: {brand_voice}
+        - Fun Facts: {fun_facts}
+        - Signature Products: {signature_products}
+        
         Example Format:
         {{
           "niche_trends": [
@@ -131,7 +161,6 @@ def research_agent(niche: str) -> dict:
         - Keep it concise and brand-safe (no profanity, no questionable references).
    """,
             agent=analyst,
-            # Expected output is strict JSON.
             expected_output=('{"niche_trends": ["1. Trend_1", "2. Trend_2"], '
 '"content_strategies": ["1. Strategy_1", "2. Strategy_2"]}'),
             context=[research_task]
@@ -156,17 +185,13 @@ def research_agent(niche: str) -> dict:
         if not analysis_output_str:
             raise APIError("Content Strategy Expert output not found.")
         
-        # Try to parse the output as JSON. If it fails due to single quotes, convert them.
         try:
             research_data_obj = ResearchData.parse_raw(analysis_output_str)
         except ValidationError as e:
-            logger.error("Initial JSON parsing failed, attempting to replace single quotes with double quotes.")
+            logger.error("JSON parsing failed, attempting correction.")
             json_ready = analysis_output_str.replace("'", '"')
-            try:
-                research_data_obj = ResearchData.parse_raw(json_ready)
-            except ValidationError as e2:
-                raise APIError("Parsed research data does not match expected schema.") from e2
-        
+            research_data_obj = ResearchData.parse_raw(json_ready)
+
         return research_data_obj.dict()
         
     except Exception as e:
@@ -174,4 +199,4 @@ def research_agent(niche: str) -> dict:
         raise APIError("Research agent failed") from e
 
 if __name__ == "__main__":
-    print(research_agent("fitness"))
+    print(research_agent("fitness", {}))

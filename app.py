@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify , send_from_directory
-
-from database import init_db, save_post, save_store, get_store, get_store_images, save_store_image
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
+from database import (
+    init_db, save_post, save_store, get_store, 
+    get_store_images, save_store_image
+)
 from exceptions import AppError
 from logger import logger
 from config import Config
-from instagram_poster import InstagramPoster, InstagrApiPoster
+from instagram_poster import InstagrApiPoster
 from instagrapi.exceptions import ChallengeRequired
 import os
 import time
@@ -12,11 +14,9 @@ from datetime import datetime
 from agents.orchestrator2 import Orchestrator  
 from werkzeug.utils import secure_filename
 
-
 logger.info("Application started successfully")
 
-UPLOAD_FOLDER = 'static/uploads' # Directory to store images
-
+UPLOAD_FOLDER = 'static/uploads'  # Directory to store images
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -24,7 +24,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure upload folder exists
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
 
 # Initialize the database
 init_db()
@@ -59,23 +58,61 @@ def upload_image():
     """
     Handles image uploads for store profile.
     """
-    file = request.files['file']
+    if 'image' not in request.files:
+        logger.error("No file part in request")
+        return redirect(url_for('store_profile'))
+
+    file = request.files['image']
+    description = request.form.get('description', '').strip()
+
+    if file.filename == '':
+        logger.error("No selected file")
+        return redirect(url_for('store_profile'))
+
     if file:
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file_path = file_path.replace("\\", "/") # Convert Windows-style backslashes to forward slashes
+        file_path = file_path.replace("\\", "/")  #  Ensure correct path format for Windows/Linux
         file.save(file_path)
 
         store = get_store()
         if store:
-            save_store_image(store[0], file_path)
+            save_store_image(store[0], file_path, description)  #  Save image to DB
+
+        logger.info(f"Image saved at {file_path}")  #  Log successful save
 
     return redirect(url_for('store_profile'))
-
-
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/edit-image/<int:image_id>', methods=['GET', 'POST'])
+def edit_image(image_id):
+    from database import get_image_by_id, update_store_image  # Import helper functions
+    if request.method == 'POST':
+        new_description = request.form.get('description', '').strip()
+        update_store_image(image_id, new_description)
+        logger.info(f"Updated image {image_id} description")
+        return redirect(url_for('store_profile'))
+    
+    image = get_image_by_id(image_id)
+    if not image:
+        logger.error(f"Image with id {image_id} not found")
+        return redirect(url_for('store_profile'))
+    
+    return render_template('edit_image.html', image=image)
+
+
+@app.route('/delete-image/<int:image_id>', methods=['POST'])
+def delete_image(image_id):
+    from database import delete_store_image  # Import the new helper function
+    try:
+        delete_store_image(image_id)
+        logger.info(f"Deleted image with id {image_id}")
+    except Exception as e:
+        logger.error(f"Error deleting image {image_id}: {str(e)}")
+    return redirect(url_for('store_profile'))
+
 
 @app.route('/create', methods=['POST'])
 def create_post():
@@ -102,11 +139,9 @@ def create_post():
         try:
             login_success = poster.login(code=code)
         except ChallengeRequired:
-            # If Instagram triggers a challenge flow, redirect to 2FA
             return redirect(url_for('show_2fa_form'))
 
         if not login_success:
-            # If login fails or code is incorrect
             error_msg = "Invalid 2FA code. Please try again." if code else "Login failed."
             return render_template('2fa.html', error=error_msg)
 
@@ -120,9 +155,8 @@ def create_post():
 
         # Store the posts in session for user review
         session['pending_posts'] = pending_posts
-        session['niche'] = niche  # Store niche if you want to save it later
+        session['niche'] = niche  
 
-        # Redirect to review page
         return redirect(url_for('review_posts'))
 
     except ChallengeRequired:
@@ -132,7 +166,6 @@ def create_post():
         logger.error(f"Workflow failed: {str(e)}", exc_info=True)
         return render_template('error.html', message="Failed to coordinate agents. Details in logs."), 500
 
-
 @app.route('/review', methods=['GET', 'POST'])
 def review_posts():
     """
@@ -140,37 +173,25 @@ def review_posts():
     POST: Accepts user edits/removals, updates session, redirects to finalize.
     """
     if request.method == 'POST':
-        # Retrieve the pending posts from session
         posts = session.get('pending_posts', [])
 
         updated_posts = []
-        # We'll loop over the posts using index references (i)
         for i, post in enumerate(posts):
-            # Get new caption (if any)
             form_caption = request.form.get(f"caption_{i}", post['caption'])
-
-            # Check if user wants to remove this post
             remove_flag = request.form.get(f"delete_{i}", "off")
             if remove_flag == "on":
-                # Skip adding to updated_posts, effectively removing it
                 continue
-
-            # Otherwise, keep the post but update the caption
             updated_posts.append({
                 "idea": post["idea"],
                 "image": post["image"],
                 "caption": form_caption
             })
 
-        # Store the updated list back into session
         session['pending_posts'] = updated_posts
-
         return redirect(url_for('finalize_posts'))
 
-    # If GET: Display the review page
     posts = session.get('pending_posts', [])
     return render_template('review.html', posts=posts)
-
 
 @app.route('/finalize', methods=['GET', 'POST'])
 def finalize_posts():
@@ -242,35 +263,19 @@ def finalize_posts():
 
 @app.route('/2fa', methods=['GET', 'POST'])
 def show_2fa_form():
-    """
-    If user runs into 2FA challenge, they come here.
-    They submit a '2fa_code', which we store in session, then
-    redirect back to create_post.
-    """
     if request.method == 'POST':
         session['2fa_code'] = request.form.get('2fa_code', '')
         return redirect(url_for('create_post'))
     return render_template('2fa.html', error=request.args.get('error'))
 
-
 @app.route('/verify-2fa', methods=['POST'])
 def verify_2fa():
-    """
-    Additional endpoint if you prefer a separate route to handle form submission.
-    """
     session['2fa_code'] = request.form.get('2fa_code', '')
     return redirect(url_for('create_post'))
 
-
 @app.route('/status')
 def check_status():
-    """
-    Simple status endpoint for any long-running tasks or AJAX-based checks.
-    Right now, it just returns "processing".
-    """
     return jsonify({"status": "processing"})
 
-
 if __name__ == '__main__':
-    # Note: Set debug to False in production
     app.run(debug=Config.TEST_MODE)
