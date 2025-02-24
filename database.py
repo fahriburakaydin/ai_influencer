@@ -36,6 +36,7 @@ def init_db():
                         store_id INTEGER NOT NULL,
                         image_path TEXT NOT NULL,
                         description TEXT DEFAULT '',  -- New column for image descriptions
+                        visual_caption TEXT DEFAULT '',  -- Auto-generated visual caption
                         FOREIGN KEY(store_id) REFERENCES stores(id)
                     )''')
         
@@ -118,7 +119,7 @@ def save_store(store_name: str, address: str, brand_voice: str, fun_facts: str, 
         if conn:
             conn.close()
 
-def save_store_image(store_id, image_path, description=""):
+def save_store_image(store_id, image_path, description="", visual_caption=""):
     """
     Saves an uploaded image with an optional description.
     """
@@ -126,11 +127,11 @@ def save_store_image(store_id, image_path, description=""):
         conn = sqlite3.connect('posts.db')
         c = conn.cursor()
         
-        c.execute('''INSERT INTO store_images (store_id, image_path, description) 
-                     VALUES (?, ?, ?)''', (store_id, image_path, description))
+        c.execute('''INSERT INTO store_images (store_id, image_path, description, visual_caption) 
+                     VALUES (?, ?, ?, ?)''', (store_id, image_path, description, visual_caption))
         
         conn.commit()
-        logger.info(f"Saved image to DB: {image_path} with description: {description}")
+        logger.info(f"Saved image to DB: {image_path} with user description: {description} and visual caption: {visual_caption}")
 
     except sqlite3.Error as e:
         logger.error(f"Failed to save image: {str(e)}")

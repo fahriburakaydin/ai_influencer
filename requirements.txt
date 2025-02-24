@@ -12,3 +12,6 @@ faiss-cpu
 langchain-community 
 duckduckgo-search 
 crewai
+transformers 
+torch 
+pillow

@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 from agents.orchestrator2 import Orchestrator  
 from werkzeug.utils import secure_filename
+from upload_handler import handle_image_upload
+
 
 logger.info("Application started successfully")
 
@@ -77,7 +79,7 @@ def upload_image():
 
         store = get_store()
         if store:
-            save_store_image(store[0], file_path, description)  #  Save image to DB
+            handle_image_upload(store[0], file_path, description)  #  Save image to DB
 
         logger.info(f"Image saved at {file_path}")  #  Log successful save
 
