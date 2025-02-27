@@ -7,7 +7,7 @@ import sqlite3
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Function to fetch captions from the database
-def fetch_post_captions(db_path='posts.db'):
+def fetch_post_captions(db_path='posts.index'):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT id, caption FROM posts")  # Use 'id' instead of 'post_id'

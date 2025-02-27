@@ -153,7 +153,7 @@ def create_post():
 
         # Generate content using the Orchestrator
         workflow_result = orchestrator.run_workflow(niche)
-        pending_posts = workflow_result.get("posts", [])
+        pending_posts = workflow_result.get("pending_posts", [])
 
         # Store the posts in session for user review
         session['pending_posts'] = pending_posts

@@ -9,7 +9,9 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
-    MODEL=os.getenv("MODEL")
+    
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+    
     INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID")
     INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
 
@@ -18,7 +20,10 @@ class Config:
 
     INSTAGRAM_SESSION_FILE = os.getenv("INSTAGRAM_SESSION_FILE", "instagram_session.json")
 
+    DEEPSEK_API_ENDPOINT = os.getenv("DEEPSEEK_API_ENDPOINT")
 
+    MODEL=os.getenv("MODEL")    
+    REASON_MODEL=os.getenv("REASON_MODEL")
 
     DISTANCE_THRESHOLD=0.5
     NUM_ALTERNATIVES=2

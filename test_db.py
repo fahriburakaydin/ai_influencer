@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the SQLite database
-conn = sqlite3.connect('posts.db')  # Ensure the path is correct
+conn = sqlite3.connect('posts.index')  # Ensure the path is correct
 
 # Create a cursor object to interact with the database
 cursor = conn.cursor()
